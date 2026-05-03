@@ -84,7 +84,7 @@ gcloud iam workload-identity-pools create "github-pool" \
 
 # 9. Create Workload Identity Provider
 echo "✅ Creating Workload Identity Provider..."
-gcloud iam workload-identity-providers create-oidc "github-provider" \
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
   --project=$PROJECT_ID \
   --location=global \
   --display-name="GitHub Provider" \
