@@ -1,27 +1,36 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db, COLLECTIONS } from "@/lib/firestore";
 
+function getUserId(session: Session | null): string | null {
+  const id = (session?.user as { id?: string } | undefined)?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
 // GET -> return stored hydration (if any) for authenticated user
 export async function GET() {
-  const session = await getServerSession(authOptions as any);
-  if (!session || !session.user || !session.user.id) {
+  const session = (await getServerSession(authOptions as any)) as Session | null;
+  const userId = getUserId(session);
+
+  if (!userId) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
-  const userId = session.user.id as string;
   const docRef = db.collection(COLLECTIONS.USERS).doc(userId);
   const snap = await docRef.get();
   const data = snap.exists ? snap.data() ?? {} : {};
-  return NextResponse.json({ hydration: data.hydration ?? null });
+  return NextResponse.json({ hydration: (data as any).hydration ?? null });
 }
 
 // POST -> accept either { glasses: boolean[8] } to overwrite full state
 // or { glassIndex: number, state: boolean } to update a single glass.
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions as any);
-  if (!session || !session.user || !session.user.id) {
+  const session = (await getServerSession(authOptions as any)) as Session | null;
+  const userId = getUserId(session);
+
+  if (!userId) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
 
@@ -32,7 +41,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const userId = session.user.id as string;
   const userRef = db.collection(COLLECTIONS.USERS).doc(userId);
 
   // Full overwrite
